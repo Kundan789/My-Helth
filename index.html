@@ -24,7 +24,7 @@
   <div class="flex justify-between items-center mb-4">
     <div class="relative">
       <button id="menuBtn" class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700">☰</button>
-      <div id="menu" class="hidden absolute left-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded shadow-lg z-50">
+      <div id="menu" class="hidden absolute left-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded shadow-lg z-50">
         <button id="resetAllBtn" class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-100 dark:hover:bg-gray-700">🗑️ Delete all data stored in browser</button>
       </div>
     </div>
@@ -39,16 +39,17 @@
 
   <!-- Progress -->
   <div class="mt-6">
-    <p class="text-sm mb-1">Weekly Progress</p>
+    <p class="text-sm mb-1">Weekly Progress <span id="progressPercent" class="font-semibold"></span></p>
     <div class="w-full bg-gray-300 rounded h-4">
       <div id="progressBar" class="bg-green-500 h-4 rounded" style="width:0%"></div>
     </div>
   </div>
 
   <!-- Calendar -->
-  <div class="mt-6">
-    <h3 class="text-lg font-semibold mb-2">📅 Workout Streak</h3>
-    <div id="calendar" class="grid grid-cols-7 gap-2 text-center"></div>
+  <div class="mt-6 relative">
+    <h3 class="text-lg font-semibold mb-2">📅 Workout Calendar</h3>
+    <div id="doneCount" class="absolute top-0 right-0 bg-blue-600 text-white text-sm w-8 h-8 flex items-center justify-center rounded-full">0</div>
+    <div id="calendar" class="grid grid-cols-7 gap-2 text-center mt-2"></div>
   </div>
 
   <!-- Done Button -->
@@ -56,17 +57,10 @@
     <button id="doneBtn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl text-lg font-semibold">✅ Mark Workout as Done</button>
   </div>
 
-  <!-- Reminder -->
-  <div class="mt-6">
-    <label class="block mb-1 text-sm">⏰ Set Daily Workout Reminder</label>
-    <input id="reminderTime" type="time" class="w-full p-2 rounded bg-gray-200 dark:bg-gray-700 text-black dark:text-white">
-    <button id="saveReminder" class="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded">Save Reminder</button>
-  </div>
-
 </div>
 
 <script>
-// ================== DATA ==================
+// ================== WORKOUT DATA ==================
 const workouts = {
   Monday: { title: 'Upper Body + Abs', exercises: ['Push-ups', 'Shoulder Press', 'Crunches'] },
   Tuesday: { title: 'Lower Body + Cardio', exercises: ['Squats', 'Lunges', 'Jumping Jacks'] },
@@ -88,7 +82,8 @@ const videos = {
   'Russian Twists': 'https://www.youtube.com/embed/wkD8rjkodUI',
   'Bench Dips': 'https://www.youtube.com/embed/jox1rb5krQI',
   'Close-Grip Push-ups': 'https://www.youtube.com/embed/0pkjOk0EiAk',
-  'Burpees': 'https://www.youtube.com/embed/TU8QYVW0gDU'
+  'Burpees': 'https://www.youtube.com/embed/TU8QYVW0gDU',
+  'Squat Thrust + Jump': 'https://www.youtube.com/embed/MW5rqN03ccY'
 };
 
 // ================== DATE ==================
@@ -97,14 +92,12 @@ const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
 document.getElementById('todayDate').innerText = `Today: ${dayName}`;
 
 // ================== RENDER WORKOUT ==================
-(function renderWorkout() {
-  const data = workouts[dayName];
-  const card = document.getElementById('workoutCard');
-  card.innerHTML = `<h2 class="text-xl font-semibold mb-2">${data.title}</h2>`;
-  data.exercises.forEach(ex => {
-    card.innerHTML += `<div class="mb-4"><p class="font-medium">${ex}</p>${videos[ex] ? `<iframe class="w-full h-48 rounded" src="${videos[ex]}" allowfullscreen></iframe>` : '<p class="text-sm">Follow instructions</p>'}</div>`;
-  });
-})();
+const card = document.getElementById('workoutCard');
+const data = workouts[dayName];
+card.innerHTML = `<h2 class="text-xl font-semibold mb-2">${data.title}</h2>`;
+data.exercises.forEach(ex => {
+  card.innerHTML += `<div class="mb-4"><p class="font-medium">${ex}</p>${videos[ex] ? `<iframe class="w-full h-48 rounded" src="${videos[ex]}" allowfullscreen></iframe>` : '<p class="text-sm">Follow instructions</p>'}</div>`;
+});
 
 // ================== DARK MODE ==================
 const darkToggle = document.getElementById('darkToggle');
@@ -117,17 +110,30 @@ darkToggle.onclick = () => {
 
 // ================== PROGRESS ==================
 let progress = JSON.parse(localStorage.getItem('progress')) || {};
+const dateKeyToday = today.toISOString().split('T')[0];
 
-const dateKeyToday = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+// Weekly reset on Sunday
+if (dayName === 'Sunday') {
+  localStorage.removeItem('progress');
+  progress = {};
+}
 
+// Done button
 document.getElementById('doneBtn').onclick = () => {
-  progress[dateKeyToday] = true;
-  localStorage.setItem('progress', JSON.stringify(progress));
-  location.reload();
+  if (!progress[dateKeyToday]) {
+    progress[dateKeyToday] = true;
+    localStorage.setItem('progress', JSON.stringify(progress));
+    alert('🔥 Workout completed! Streak updated.');
+    location.reload();
+  }
 };
 
-const completed = Object.values(progress).filter(Boolean).length;
-document.getElementById('progressBar').style.width = `${Math.min(completed * 14, 100)}%`;
+const completedDays = Object.values(progress).filter(Boolean).length;
+document.getElementById('doneCount').innerText = completedDays;
+
+const percent = Math.min((completedDays / 7) * 100, 100);
+document.getElementById('progressBar').style.width = percent + '%';
+document.getElementById('progressPercent').innerText = `(${Math.round(percent)}%)`;
 
 // ================== CALENDAR ==================
 const calendar = document.getElementById('calendar');
@@ -136,7 +142,7 @@ const month = today.getMonth();
 const daysInMonth = new Date(year, month + 1, 0).getDate();
 
 for (let d = 1; d <= daysInMonth; d++) {
-  const key = `${year}-${month + 1}-${d}`;
+  const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const cell = document.createElement('div');
   const isPast = d < today.getDate();
 
@@ -147,30 +153,6 @@ for (let d = 1; d <= daysInMonth; d++) {
   if (d === today.getDate()) cell.classList.add('ring-2', 'ring-blue-500');
   cell.textContent = d;
   calendar.appendChild(cell);
-}
-
-// ================== REMINDER ==================
-const reminderInput = document.getElementById('reminderTime');
-const saveReminder = document.getElementById('saveReminder');
-
-if (localStorage.reminderTime) reminderInput.value = localStorage.reminderTime;
-
-saveReminder.onclick = () => {
-  if (!reminderInput.value) return alert('Select time');
-  localStorage.reminderTime = reminderInput.value;
-  alert('✅ Reminder saved');
-};
-
-if ('Notification' in window) {
-  Notification.requestPermission();
-  setInterval(() => {
-    if (!localStorage.reminderTime) return;
-    const now = new Date();
-    const [h, m] = localStorage.reminderTime.split(':');
-    if (now.getHours() == h && now.getMinutes() == m && now.getSeconds() < 3) {
-      if (Notification.permission === 'granted') new Notification('Workout Time 💪');
-    }
-  }, 1000);
 }
 
 // ================== MENU + RESET ==================
@@ -187,7 +169,9 @@ resetAllBtn.onclick = () => {
 };
 
 // ================== SERVICE WORKER ==================
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
 </script>
 </body>
 </html>
